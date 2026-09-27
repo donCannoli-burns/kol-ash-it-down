@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kolmafia-doc-edit-relay"
+version = "0.1.0"
+description = "Local-first KoLmafia relay document bridge: ASH/gCLI evidence + Python conversion/editing + SQLite session memory."
+requires-python = ">=3.10"
+dependencies = [
+  "markitdown",
+  "beautifulsoup4",
+  "markdown"
+]
+
+[project.scripts]
+kol-doc-edit = "kol_doc_edit.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

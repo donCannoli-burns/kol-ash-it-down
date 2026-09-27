@@ -1,0 +1,12 @@
+name: kol-doc-edit
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - nodejs
+  - pip:
+      - -e .
+      - markitdown
+      - beautifulsoup4
+      - markdown

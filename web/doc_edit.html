@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KoLmafia · Doc Edit Relay</title>
+<style>
+:root{color-scheme:dark;--bg:#10100e;--panel:#171712;--ink:#ffffe3;--muted:#8c8c7d;--line:#383830;--live:#22c55e;--warn:#f59e0b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace}
+header{height:50px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--line);padding:0 16px;position:sticky;top:0;background:#10100ef2}
+.brand{font-weight:700;letter-spacing:.14em}.muted{color:var(--muted)}.live{color:var(--live)}
+main{display:grid;grid-template-columns:190px minmax(0,1fr);min-height:calc(100vh - 50px)}
+nav{border-right:1px solid var(--line);padding:12px}nav button{display:block;width:100%;text-align:left;margin:0 0 6px;padding:10px;border:1px solid transparent;background:transparent;color:var(--muted)}
+nav button.active,nav button:hover{border-color:var(--line);color:var(--ink);background:#ffffff08}
+section{display:none;padding:22px;max-width:1200px}section.active{display:block}
+h1,h2{font-family:Georgia,serif;font-weight:400}h1{font-size:38px;margin:0 0 8px}h2{font-size:25px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.card{border:1px solid var(--line);background:var(--panel);padding:14px}
+label{display:block;color:var(--muted);font-size:11px;margin:12px 0 5px}input,textarea,select,button{font:inherit}
+input,textarea,select{width:100%;background:#0d0d0b;color:var(--ink);border:1px solid var(--line);padding:9px}textarea{min-height:120px}
+button.action{border:1px solid var(--line);background:transparent;color:var(--ink);padding:8px 12px;margin:10px 4px 0 0;cursor:pointer}
+button.action.primary{background:var(--ink);color:var(--bg)}pre{white-space:pre-wrap;overflow:auto;border:1px solid var(--line);padding:12px;max-height:460px;background:#0b0b09}
+small.code{font-family:ui-monospace,monospace;color:var(--muted)}
+@media(max-width:760px){main{grid-template-columns:1fr}nav{border-right:0;border-bottom:1px solid var(--line);display:flex;overflow:auto}nav button{min-width:115px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><span class="brand">KOLMAFIA · DOC EDIT</span><span id="health" class="muted">service unprobed</span><span class="muted">ASH/gCLI evidence · Python formatter · SQLite memory</span></header>
+<main>
+<nav>
+<button data-view="status" class="active">STATUS</button>
+<button data-view="convert">CONVERT</button>
+<button data-view="edit">EDIT</button>
+<button data-view="session">SESSION</button>
+<button data-view="sql">SQL</button>
+<button data-view="logs">LOGS</button>
+</nav>
+<div>
+<section id="status" class="active">
+<h1>Agent document bridge</h1>
+<p class="muted">Observation and document editing surface. It does not execute KoL actions.</p>
+<button class="action primary" onclick="status()">REFRESH STATUS</button>
+<button class="action" onclick="statusArtifact()">WRITE AGENT STATUS ARTIFACT</button>
+<pre id="statusOut">—</pre>
+</section>
+
+<section id="convert">
+<h1>Cross-format converter</h1>
+<p class="muted">Supported: .md · .ash · .html · .html5 · .txt · .xml · .json. Conversion previews by default; writing requires confirmation.</p>
+<div class="grid"><div><label>Source</label><input id="convSource" value="data/doc_edit.md"></div><div><label>Target</label><input id="convTarget" value="readme.html/doc_edit.html"></div></div>
+<label><input type="checkbox" id="convConfirm" style="width:auto"> confirm write</label>
+<button class="action primary" onclick="convertDoc()">CONVERT</button>
+<pre id="convOut">—</pre>
+</section>
+
+<section id="edit">
+<h1>Bounded text edit</h1>
+<div class="grid"><div><label>Path</label><input id="editPath" value="data/doc_edit.md"></div><div><label>Mode</label><select id="editMode"><option>replace_literal</option><option>replace_first</option><option>regex</option><option>append</option><option>overwrite</option></select></div></div>
+<label>Find / regex</label><textarea id="editFind"></textarea>
+<label>Replace</label><textarea id="editReplace"></textarea>
+<label>Content (append/overwrite)</label><textarea id="editContent"></textarea>
+<label>Expected SHA-256 (optional optimistic lock)</label><input id="editSha">
+<label><input type="checkbox" id="editConfirm" style="width:auto"> confirm write + backup</label>
+<button class="action" onclick="readDoc()">READ + SHA</button><button class="action primary" onclick="editDoc()">PREVIEW / WRITE</button>
+<pre id="editOut">—</pre>
+</section>
+
+<section id="session">
+<h1>gCLI execution evidence</h1>
+<p class="muted">Reads the active session log and writes a local temp tail. A marker emitted by <code>doc_edit_cli.ash</code> can be checked to prove the gCLI path actually ran.</p>
+<div class="grid"><div><label>Player (blank = newest active_session.*)</label><input id="sessPlayer"></div><div><label>Last lines</label><input id="sessLines" type="number" value="250"></div></div>
+<label>Expected marker (optional)</label><input id="sessMarker">
+<button class="action primary" onclick="sessionTail()">CAPTURE TAIL</button>
+<pre id="sessOut">—</pre>
+</section>
+
+<section id="sql">
+<h1>SQLite memory query</h1>
+<p class="muted">SELECT/WITH only; connection is placed in SQLite query-only mode.</p>
+<textarea id="sqlText">SELECT id, datetime(ts,'unixepoch') AS utc, actor, action, status, target, gcli_verified FROM events ORDER BY id DESC LIMIT 30</textarea>
+<button class="action primary" onclick="runSql()">QUERY</button>
+<pre id="sqlOut">—</pre>
+</section>
+
+<section id="logs">
+<h1>Bridge event log</h1>
+<button class="action primary" onclick="events()">REFRESH</button>
+<pre id="logsOut">—</pre>
+</section>
+</div>
+</main>
+<script>
+const TOKEN='__KOL_DOC_EDIT_TOKEN__'.trim();
+const BASE='http://127.0.0.1:61337';
+const out=(id,v)=>document.getElementById(id).textContent=typeof v==='string'?v:JSON.stringify(v,null,2);
+async function api(path,method='GET',body){
+  const r=await fetch(BASE+path,{method,headers:{'Content-Type':'application/json','X-Kol-Doc-Edit-Token':TOKEN},body:body===undefined?undefined:JSON.stringify(body)});
+  const j=await r.json(); if(!r.ok) throw new Error(j.error||r.statusText); return j;
+}
+async function safe(id,fn){try{out(id,await fn())}catch(e){out(id,{ok:false,error:String(e)})}}
+async function probe(){try{const j=await api('/api/health');document.getElementById('health').textContent='● service '+(j.ok?'live':'bad');document.getElementById('health').className=j.ok?'live':'muted'}catch(e){document.getElementById('health').textContent='● service offline'}}
+function status(){safe('statusOut',()=>api('/api/status'))}
+function statusArtifact(){safe('statusOut',()=>api('/api/status-artifact','POST',{}))}
+function convertDoc(){safe('convOut',()=>api('/api/convert','POST',{source:convSource.value,target:convTarget.value,confirm:convConfirm.checked}))}
+function readDoc(){safe('editOut',async()=>{const j=await api('/api/read','POST',{path:editPath.value});editSha.value=j.sha256;return j})}
+function editDoc(){safe('editOut',()=>api('/api/edit','POST',{path:editPath.value,mode:editMode.value,find:editFind.value,replace:editReplace.value,content:editContent.value,expected_sha256:editSha.value,confirm:editConfirm.checked}))}
+function sessionTail(){safe('sessOut',()=>api('/api/session-tail','POST',{player:sessPlayer.value,lines:Number(sessLines.value),marker:sessMarker.value}))}
+function runSql(){safe('sqlOut',()=>api('/api/query','POST',{sql:sqlText.value,limit:500}))}
+function events(){safe('logsOut',()=>api('/api/events?limit=100'))}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.view).classList.add('active')});
+probe();status();
+</script>
+</body></html>
