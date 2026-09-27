@@ -33,7 +33,7 @@ boolean docedit_write_job(string id, string action, string source, string target
     json += "\"lines\":" + lines + ",";
     json += "\"marker\":\"" + docedit_json_escape(marker) + "\"";
     json += "}\n";
-    return buffer_to_file(json, "doc_edit/inbox/" + id + ".json");
+    return buffer_to_file(json.to_buffer(), "doc_edit/inbox/" + id + ".json");
 }
 
 void docedit_write_status(string marker) {
@@ -53,5 +53,5 @@ void docedit_write_status(string marker) {
     json += "\"can_interact\":" + to_string(can_interact()) + ",";
     json += "\"marker\":\"" + docedit_json_escape(marker) + "\"";
     json += "}\n";
-    buffer_to_file(json, "doc_edit/system-status.json");
+    buffer_to_file(json.to_buffer(), "doc_edit/system-status.json");
 }
