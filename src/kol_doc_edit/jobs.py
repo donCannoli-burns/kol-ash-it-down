@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-import json, time, traceback
+import importlib.util, json, time, traceback
 from .config import Config
 from .guard import resolve_user_path
 from .converters import convert_text
@@ -13,6 +13,49 @@ def _write_result(cfg: Config, job_id: str, result: dict) -> Path:
     out = cfg.outbox / f"{job_id}.json"
     atomic_write(out, json.dumps(result, indent=2, sort_keys=True) + "\n")
     return out
+
+def _run_don_combo_matrix(cfg: Config, correlation_id: str) -> dict:
+    bridge_path = cfg.kol_home / "scripts" / "don_combo" / "watersheep_combo_bridge.py"
+    if not bridge_path.exists():
+        raise FileNotFoundError(f"don_combo matrix bridge not installed: {bridge_path}")
+
+    spec = importlib.util.spec_from_file_location("don_combo_watersheep_bridge", bridge_path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"unable to load don_combo bridge: {bridge_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    result = module.snapshot(
+        cfg.kol_home,
+        "http://127.0.0.1:8766/v1/systemone",
+        6,
+        15.0,
+        False,
+    )
+    paths = module.write_runtime(cfg.kol_home, result)
+    comparison = result.get("comparison") or {}
+    observations = result.get("observations") or {}
+    summary = {
+        "runtime_schema": result.get("schema"),
+        "watersheep_status": (result.get("watersheep") or {}).get("status"),
+        "pool_size": comparison.get("pool_size"),
+        "baseline_rank": comparison.get("baseline_rank"),
+        "shadow_top_minute": comparison.get("shadow_top_minute"),
+        "observed_fronts": observations.get("fronts_recorded"),
+        "session_events_added": (observations.get("session_tail") or {}).get("events_added"),
+        **paths,
+    }
+    log_event(
+        cfg.db_path,
+        correlation_id=correlation_id,
+        actor="gcli-job",
+        action="don-combo-matrix-refresh",
+        source=str(bridge_path),
+        target=paths["runtime_json"],
+        status="written",
+        detail=summary,
+    )
+    return summary
 
 def process_job(cfg: Config, job_path: Path) -> dict:
     job = json.loads(job_path.read_text(encoding="utf-8"))
@@ -35,6 +78,9 @@ def process_job(cfg: Config, job_path: Path) -> dict:
             cfg, str(job.get("player") or ""), int(job.get("lines") or 200),
             str(job.get("marker") or ""), correlation_id
         )
+
+    elif action == "don-combo-matrix-refresh":
+        result["don_combo_matrix"] = _run_don_combo_matrix(cfg, correlation_id)
 
     elif action == "convert":
         source = resolve_user_path(str(job.get("source") or ""), cfg)
