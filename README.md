@@ -375,3 +375,16 @@ Then start the Python service and confirm that the gCLI marker appears in a capt
 ## License
 
 MIT.
+
+
+## don_combo one-shot worker
+
+The existing inbox worker recognizes `don-combo-matrix-refresh`. For that action it dynamically imports the installed:
+
+```text
+~/.kolmafia/scripts/don_combo/watersheep_combo_bridge.py
+```
+
+and calls its `snapshot()` and `write_runtime()` functions exactly once. It does not shell out, invoke a second watcher, or execute a KoL action. WaterSheep remains a localhost advisory dependency at `127.0.0.1:8766`.
+
+This lets KoLmafia/ASH enqueue a matrix refresh while the already-running `kol-doc-edit serve` worker performs the local Python/HTTP/file work.
